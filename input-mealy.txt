@@ -1,0 +1,3 @@
+4 2 mili
+s1/y1 s0/y2 s1/y1 s0/y1
+s2/y2 s2/y2 s3/y1 s1/y2 

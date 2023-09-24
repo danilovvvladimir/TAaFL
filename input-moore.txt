@@ -1,0 +1,4 @@
+6 2 mur
+y1 у2 у1 y2 y2 y1
+q2 q2 q1 q1 q2 q0
+q4 q4 q4 q4 q5 q3
