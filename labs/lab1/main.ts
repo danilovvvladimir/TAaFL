@@ -9,11 +9,9 @@ const processData = (data: DataFromFile) => {
   switch (data.mode) {
     case ConversionMode.MEALY:
       const mealyMachineData = new MealyMachineData(data.matrix);
-      machineData = mealyMachineData;
+      machineData = mealyMachineData.convertToMoore();
       break;
     case ConversionMode.MOORE:
-      console.log("moore");
-
       const mooreMachineData = new MooreMachineData(data.matrix);
       machineData = mooreMachineData.convertToMealy();
       break;
@@ -26,7 +24,7 @@ const processData = (data: DataFromFile) => {
 };
 
 try {
-  const fileReader = new FileHandler("input-moore.txt");
+  const fileReader = new FileHandler("input-mealy.txt");
   const data = fileReader.readDataFromFile();
 
   const machineData = processData(data);

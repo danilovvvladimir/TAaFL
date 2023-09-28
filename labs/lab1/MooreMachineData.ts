@@ -1,28 +1,27 @@
 import IMachineData from "./IMachineData";
 import MealyMachineData from "./MealyMachineData";
 
-type DeterministicMoves = Map<InitialStateAndInputSymbol, string>;
-type InitialStateAndInputSymbol = {
-  State: string;
-  Symbol: string;
+export type DeterministicMoves = {
+  initialStateAndInput: InitialStateAndInputSymbol;
+  destinationState: string;
 };
 
-type DestinationStateAndSignal = Map<string, string>;
-// type DestinationStateAndSignal = {
-//   State: string;
-//   Symbol: string;
-// };
+export type InitialStateAndInputSymbol = {
+  initialState: string;
+  inputSymbol: string;
+};
+
+export type DestinationStateAndSignal = {
+  destinationState: string;
+  signal: string;
+};
 
 class MooreMachineData implements IMachineData {
   private states: string[] = [];
   private inputAlphabet: string[] = [];
   private outputAlphabet: string[] = [];
-  private transitionFunctions: string[][] = [];
-  private stateSignals: DestinationStateAndSignal = new Map<string, string>();
-  private moves: DeterministicMoves = new Map<
-    InitialStateAndInputSymbol,
-    string
-  >();
+  private stateSignals: DestinationStateAndSignal[] = [];
+  private moves: DeterministicMoves[] = [];
 
   constructor(info: string[][]) {
     if (!info || info.length === 0) {
@@ -37,7 +36,10 @@ class MooreMachineData implements IMachineData {
 
     for (let i = 0; i < info[0].length; i++) {
       this.states.push(`q${i}`);
-      this.stateSignals.set(`q${i}`, this.outputAlphabet[i]);
+      this.stateSignals.push({
+        destinationState: `q${i}`,
+        signal: this.outputAlphabet[i],
+      });
     }
 
     this.moves = this.getDetermenisticMoves(
@@ -60,10 +62,7 @@ class MooreMachineData implements IMachineData {
   ) {
     const transposedRecords = this.transpose(info);
 
-    const result: DeterministicMoves = new Map<
-      InitialStateAndInputSymbol,
-      string
-    >();
+    const result: DeterministicMoves[] = [];
 
     for (let i = 0; i < transposedRecords.length; i++) {
       for (let j = 0; j < transposedRecords[i].length; j++) {
@@ -73,11 +72,14 @@ class MooreMachineData implements IMachineData {
         }
 
         const stateAndInput: InitialStateAndInputSymbol = {
-          State: states[i],
-          Symbol: inputSymbols[j],
+          initialState: states[i],
+          inputSymbol: inputSymbols[j],
         };
 
-        result.set(stateAndInput, move);
+        result.push({
+          initialStateAndInput: stateAndInput,
+          destinationState: move,
+        });
       }
     }
 
@@ -110,26 +112,30 @@ class MooreMachineData implements IMachineData {
   }
 
   private getMealyMoves(
-    deterministicMoves: DeterministicMoves,
-    stateToSignal: DestinationStateAndSignal,
+    deterministicMoves: DeterministicMoves[],
+    stateToSignal: DestinationStateAndSignal[],
   ) {
     const result = new Map<
       InitialStateAndInputSymbol,
       DestinationStateAndSignal
     >();
 
-    for (const [initialStateAndInput, destinationState] of deterministicMoves) {
-      result.set(
-        initialStateAndInput,
-        new Map().set(destinationState, stateToSignal.get(destinationState)),
-      );
+    for (const move of deterministicMoves) {
+      const { initialStateAndInput, destinationState } = move;
+
+      result.set(initialStateAndInput, {
+        destinationState,
+        signal: stateToSignal.filter(
+          (sts) => sts.destinationState === destinationState,
+        )[0].signal,
+      });
     }
 
     return result;
   }
 
   public getConvertedData() {
-    // const mealyMachineData: MealyMachineData = new MealyMachineData();
+    // Convert Moore to String
     return "s";
   }
 }
