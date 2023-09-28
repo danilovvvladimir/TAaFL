@@ -10,31 +10,51 @@ export type MealyMove = {
   destinationStateAndSignal: DestinationStateAndSignal;
 };
 
+export type TestType = {
+  state: string;
+  destinationStateAndSignal: DestinationStateAndSignal;
+};
+
+export interface MealyMachineDataProps {
+  states: string[];
+  inputAlphabet: string[];
+  moves: MealyMove[];
+}
+
 class MealyMachineData implements IMachineData {
   private states: string[] = [];
   private inputAlphabet: string[] = [];
   private moves: MealyMove[] = [];
 
-  constructor(info: string[][]) {
-    if (!info || info.length === 0) {
-      return;
+  constructor(info: string[][]);
+  constructor(mealyMachineDataProps: MealyMachineDataProps);
+  constructor(args: string[][] | MealyMachineDataProps) {
+    if (Array.isArray(args)) {
+      if (!args || args.length === 0) {
+        return;
+      }
+
+      console.log("info", args);
+
+      for (let i = 0; i < args[0].length; i++) {
+        this.states.push(`S${i}`);
+      }
+
+      for (let i = 0; i < args.length; i++) {
+        this.inputAlphabet.push(`x${i + 1}`);
+      }
+
+      this.moves = this.getMoves(args, this.states, this.inputAlphabet);
+
+      // console.log("inputAlphabet:", this.inputAlphabet);
+      // console.log("States:", this.states);
+      // console.log("moves:", this.moves);
+    } else {
+      const { inputAlphabet, moves, states } = args;
+      this.states = states;
+      this.inputAlphabet = inputAlphabet;
+      this.moves = moves;
     }
-
-    console.log("info", info);
-
-    for (let i = 0; i < info[0].length; i++) {
-      this.states.push(`S${i}`);
-    }
-
-    for (let i = 0; i < info.length; i++) {
-      this.inputAlphabet.push(`x${i + 1}`);
-    }
-
-    this.moves = this.getMoves(info, this.states, this.inputAlphabet);
-
-    // console.log("inputAlphabet:", this.inputAlphabet);
-    // console.log("States:", this.states);
-    // console.log("moves:", this.moves);
   }
   private getMoves(
     info: string[][],
@@ -71,7 +91,8 @@ class MealyMachineData implements IMachineData {
       this.moves,
     );
 
-    const mooreStates = Array.from(newStateToOldPair.keys()).sort();
+    // const mooreStates = Array.from(newStateToOldPair.keys()).sort();
+    const mooreStates = newStateToOldPair.map((item) => item.state);
 
     const mooreStateSignals = this.getMooreStateSignals(newStateToOldPair);
 
@@ -84,24 +105,26 @@ class MealyMachineData implements IMachineData {
 
     console.log(mooreMoves);
 
-    return new MooreMachineData([]);
+    return new MooreMachineData({
+      inputAlphabet: this.inputAlphabet,
+      moves: mooreMoves,
+      states: mooreStates,
+      stateSignals: mooreStateSignals,
+    });
   }
 
   private getMooreMoves(
     mooreStates: string[],
     mealyMoves: MealyMove[],
     inputSymbols: string[],
-    stateToOldStateAndSignalMap: Map<string, DestinationStateAndSignal>,
+    stateToOldStateAndSignalMap: TestType[],
   ) {
-    const oldStateToStateMap: Map<DestinationStateAndSignal, string> =
-      this.getOldStateAndSignalToStateMap(stateToOldStateAndSignalMap);
-
-    console.log("oldStateToStateMap", oldStateToStateMap);
-
     const result: DeterministicMoves[] = [];
 
     for (const state of mooreStates) {
-      const oldState = stateToOldStateAndSignalMap.get(state).destinationState;
+      const oldState = stateToOldStateAndSignalMap.find(
+        (item) => item.state === state,
+      ).destinationStateAndSignal.destinationState;
 
       if (oldState) {
         for (const symbol of inputSymbols) {
@@ -120,14 +143,13 @@ class MealyMachineData implements IMachineData {
           );
 
           if (mealyMove) {
-            if (!oldStateToStateMap.get(mealyMove.destinationStateAndSignal)) {
-              console.log("not found", mealyMove.destinationStateAndSignal);
-            }
             result.push({
               initialStateAndInput: key,
-              destinationState:
-                oldStateToStateMap.get(mealyMove.destinationStateAndSignal) ||
-                "",
+              destinationState: stateToOldStateAndSignalMap.find(
+                (item) =>
+                  JSON.stringify(item.destinationStateAndSignal) ===
+                  JSON.stringify(mealyMove.destinationStateAndSignal),
+              ).destinationStateAndSignal.destinationState,
             });
           }
         }
@@ -137,29 +159,16 @@ class MealyMachineData implements IMachineData {
     return result;
   }
 
-  private getOldStateAndSignalToStateMap(
-    stateToOldStateAndSignalMap: Map<string, DestinationStateAndSignal>,
-  ) {
-    const result: Map<DestinationStateAndSignal, string> = new Map();
-
-    stateToOldStateAndSignalMap.forEach((oldStateAndSignal, state) => {
-      result.set(oldStateAndSignal, state);
-    });
-
-    return result;
-  }
-
-  private getMooreStateSignals(
-    newStateToOldPair: Map<string, DestinationStateAndSignal>,
-  ) {
+  private getMooreStateSignals(newStateToOldPair: TestType[]) {
     const result: DestinationStateAndSignal[] = [];
 
-    newStateToOldPair.forEach((oldStateAndSignal, newState) => {
+    newStateToOldPair.forEach(({ destinationStateAndSignal, state }) => {
       result.push({
-        signal: oldStateAndSignal.signal,
-        destinationState: newState,
+        signal: destinationStateAndSignal.signal,
+        destinationState: state,
       });
     });
+
     return result;
   }
 
@@ -170,7 +179,7 @@ class MealyMachineData implements IMachineData {
   ) {
     const processedStates: Map<string, boolean> = new Map();
 
-    const result: Map<string, DestinationStateAndSignal> = new Map();
+    const result: TestType[] = [];
     let counter = 0;
 
     for (const inputSymbol of inputAlphabet) {
@@ -191,7 +200,7 @@ class MealyMachineData implements IMachineData {
         ) {
           const stateName = this.getNewStateName(counter);
 
-          result.set(stateName, destinationStateAndSignal);
+          result.push({ state: stateName, destinationStateAndSignal });
 
           counter++;
           processedStates.set(JSON.stringify(destinationStateAndSignal), true);
@@ -201,8 +210,6 @@ class MealyMachineData implements IMachineData {
 
     return result;
   }
-
-  private getMooreStates() {}
 
   private getNewStateName(number: number) {
     return "S" + number;
@@ -214,7 +221,7 @@ class MealyMachineData implements IMachineData {
 
   public getConvertedData() {
     // Convert Mealy to String
-    return "s";
+    return "mealy data";
   }
 }
 
