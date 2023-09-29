@@ -1,93 +1,72 @@
 import IMachineData from "./IMachineData";
-import MealyMachineData, { MealyMove } from "./MealyMachineData";
-
-export type DeterministicMoves = {
-  initialStateAndInput: InitialStateAndInputSymbol;
-  destinationState: string;
-};
-
-export type InitialStateAndInputSymbol = {
-  initialState: string;
-  inputSymbol: string;
-};
-
-export type DestinationStateAndSignal = {
-  destinationState: string;
-  signal: string;
-};
-
-export interface MooreMachineDataProps {
-  states: string[];
-  inputAlphabet: string[];
-  stateSignals: DestinationStateAndSignal[];
-  moves: DeterministicMoves[];
-}
+import MealyMachineData from "./MealyMachineData";
+import MealyMooreHelper from "./MealyMooreHelper";
+import {
+  DestinationStateAndSignal,
+  InitialStateAndInputSymbol,
+  MooreMachineDataInfo,
+  MooreMove,
+} from "./MealyMooreTypes";
 
 class MooreMachineData implements IMachineData {
+  private readonly DEFAULT_EMPTY_SYMBOL: string = "-";
+  private readonly DEFAULT_INPUT_SYMBOL: string = "x";
+  private readonly DEFAULT_SEPARATOR_SYMBOL: string = "/";
+
   private states: string[] = [];
-  private inputAlphabet: string[] = [];
+  private inputSymbols: string[] = [];
   private outputAlphabet: string[] = [];
   private stateSignals: DestinationStateAndSignal[] = [];
-  private moves: DeterministicMoves[] = [];
+  private moves: MooreMove[] = [];
+
+  private mealyMooreHelper = new MealyMooreHelper(this.DEFAULT_EMPTY_SYMBOL);
 
   constructor(info: string[][]);
-  constructor(mooreMachineDataProps: MooreMachineDataProps);
+  constructor(mooreMachineDataInfo: MooreMachineDataInfo);
 
-  constructor(args: string[][] | MooreMachineDataProps) {
+  constructor(args: string[][] | MooreMachineDataInfo) {
     if (Array.isArray(args)) {
       if (!args || args.length === 0) {
         return;
       }
 
       for (let i = 0; i < args.length - 1; i++) {
-        this.inputAlphabet.push(`x${i + 1}`);
+        this.inputSymbols.push(`${this.DEFAULT_INPUT_SYMBOL}${i + 1}`);
       }
 
       this.outputAlphabet = args[0];
 
       for (let i = 0; i < args[0].length; i++) {
-        this.states.push(`q${i}`);
+        this.states.push(`${i + 1}`);
         this.stateSignals.push({
-          destinationState: `q${i}`,
-          signal: this.outputAlphabet[i],
+          destinationState: `${i + 1}`,
+          signal: this.outputAlphabet[i].split(
+            this.DEFAULT_SEPARATOR_SYMBOL,
+          )[1],
         });
       }
 
-      this.moves = this.getDetermenisticMoves(
-        args.slice(1),
-        this.states,
-        this.inputAlphabet,
-      );
-
-      // console.log("inputAlphabet:", this.inputAlphabet);
-      // console.log("outputAlphabet:", this.outputAlphabet);
-      // console.log("States:", this.states);
-      // console.log("stateSignals:", this.stateSignals);
-      // console.log("moves:", this.moves);
+      this.moves = this.getMoves(args.slice(1), this.states, this.inputSymbols);
     } else {
-      const { inputAlphabet, moves, stateSignals, states } = args;
+      const { inputSymbols, moves, stateSignals, states } = args;
 
-      this.inputAlphabet = inputAlphabet;
+      this.inputSymbols = inputSymbols;
       this.moves = moves;
       this.stateSignals = stateSignals;
       this.states = states;
     }
   }
 
-  private getDetermenisticMoves(
-    info: string[][],
-    states: string[],
-    inputSymbols: string[],
-  ) {
-    const transposedRecords = this.transpose(info);
+  private getMoves(info: string[][], states: string[], inputSymbols: string[]) {
+    const transposedRecords = this.mealyMooreHelper.transposeMatrix(info);
 
-    const result: DeterministicMoves[] = [];
+    const result: MooreMove[] = [];
 
     for (let i = 0; i < transposedRecords.length; i++) {
       for (let j = 0; j < transposedRecords[i].length; j++) {
         const move = transposedRecords[i][j];
-        if (move === "-") {
-          continue;
+        if (move === this.DEFAULT_EMPTY_SYMBOL) {
+          // continue;
         }
 
         const stateAndInput: InitialStateAndInputSymbol = {
@@ -105,67 +84,37 @@ class MooreMachineData implements IMachineData {
     return result;
   }
 
-  private transpose(matrix: string[][]): string[][] {
-    const xl = matrix[0].length;
-    const yl = matrix.length;
-
-    const result: string[][] = new Array(xl);
-    for (let i = 0; i < xl; i++) {
-      result[i] = new Array(yl);
-    }
-
-    for (let i = 0; i < xl; i++) {
-      for (let j = 0; j < yl; j++) {
-        result[i][j] = matrix[j][i];
-      }
-    }
-
-    return result;
-  }
-
   public convertToMealy() {
-    const mealyMoves = this.getMealyMoves(this.moves, this.stateSignals);
+    const mealyMoves = this.mealyMooreHelper.getMealyMovesByMoore(
+      this.moves,
+      this.stateSignals,
+    );
 
     return new MealyMachineData({
-      inputAlphabet: this.inputAlphabet,
+      inputSymbols: this.inputSymbols,
       moves: mealyMoves,
       states: this.states,
     });
   }
 
-  private getMealyMoves(
-    deterministicMoves: DeterministicMoves[],
-    stateToSignal: DestinationStateAndSignal[],
-  ): MealyMove[] {
-    const result: MealyMove[] = [];
+  public toString() {
+    let mooreStringData =
+      this.stateSignals.map((item) => item.signal).join(" ") + "\n";
 
-    for (const move of deterministicMoves) {
-      const { initialStateAndInput, destinationState } = move;
-
-      // result.set(initialStateAndInput, {
-      //   destinationState,
-      //   signal: stateToSignal.filter(
-      //     (sts) => sts.destinationState === destinationState,
-      //   )[0].signal,
-      // });
-
-      result.push({
-        initialStateAndInput,
-        destinationStateAndSignal: {
-          destinationState,
-          signal: stateToSignal.filter(
-            (sts) => sts.destinationState === destinationState,
-          )[0].signal,
-        },
-      });
+    for (let i = 0; i < this.inputSymbols.length; i++) {
+      mooreStringData =
+        mooreStringData +
+        this.moves
+          .filter(
+            (item) =>
+              item.initialStateAndInput.inputSymbol === this.inputSymbols[i],
+          )
+          .map((item) => item.destinationState)
+          .join(" ") +
+        "\n";
     }
 
-    return result;
-  }
-
-  public getConvertedData() {
-    // Convert Moore to String
-    return "moore data";
+    return mooreStringData;
   }
 }
 

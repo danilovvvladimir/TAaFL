@@ -1,30 +1,27 @@
 import IMachineData from "./IMachineData";
-import MooreMachineData, {
+import MealyMooreHelper from "./MealyMooreHelper";
+import {
+  MealyMove,
+  MealyMachineDataProps,
   DestinationStateAndSignal,
-  DeterministicMoves,
   InitialStateAndInputSymbol,
-} from "./MooreMachineData";
-
-export type MealyMove = {
-  initialStateAndInput: InitialStateAndInputSymbol;
-  destinationStateAndSignal: DestinationStateAndSignal;
-};
-
-export type TestType = {
-  state: string;
-  destinationStateAndSignal: DestinationStateAndSignal;
-};
-
-export interface MealyMachineDataProps {
-  states: string[];
-  inputAlphabet: string[];
-  moves: MealyMove[];
-}
+} from "./MealyMooreTypes";
+import MooreMachineData from "./MooreMachineData";
 
 class MealyMachineData implements IMachineData {
+  private readonly DEFAULT_SEPARATOR_SYMBOL: string = "/";
+  private readonly DEFAULT_STATE_SYMBOL: string = "";
+  private readonly DEFAULT_EMPTY_SYMBOL: string = "-";
+  private readonly DEFAULT_INPUT_SYMBOL: string = "x";
+
+  private separatorSymbol: string = this.DEFAULT_SEPARATOR_SYMBOL;
+  private stateSymbol: string = this.DEFAULT_STATE_SYMBOL;
+
   private states: string[] = [];
-  private inputAlphabet: string[] = [];
+  private inputSymbols: string[] = [];
   private moves: MealyMove[] = [];
+
+  private mealyMooreHelper = new MealyMooreHelper(this.DEFAULT_EMPTY_SYMBOL);
 
   constructor(info: string[][]);
   constructor(mealyMachineDataProps: MealyMachineDataProps);
@@ -34,47 +31,58 @@ class MealyMachineData implements IMachineData {
         return;
       }
 
-      console.log("info", args);
+      const { separatorSymbol, stateSymbol } =
+        this.mealyMooreHelper.getMealyMoveDetails(
+          args,
+          this.DEFAULT_EMPTY_SYMBOL,
+        );
+      this.separatorSymbol = separatorSymbol;
+      this.stateSymbol = stateSymbol;
 
       for (let i = 0; i < args[0].length; i++) {
-        this.states.push(`S${i}`);
+        this.states.push(`${this.stateSymbol}${i}`);
       }
 
       for (let i = 0; i < args.length; i++) {
-        this.inputAlphabet.push(`x${i + 1}`);
+        this.inputSymbols.push(`${this.DEFAULT_INPUT_SYMBOL}${i + 1}`);
       }
 
-      this.moves = this.getMoves(args, this.states, this.inputAlphabet);
-
-      // console.log("inputAlphabet:", this.inputAlphabet);
-      // console.log("States:", this.states);
-      // console.log("moves:", this.moves);
+      this.moves = this.getMoves(args, this.states, this.inputSymbols);
     } else {
-      const { inputAlphabet, moves, states } = args;
+      const { inputSymbols, moves, states } = args;
       this.states = states;
-      this.inputAlphabet = inputAlphabet;
+      this.inputSymbols = inputSymbols;
       this.moves = moves;
     }
   }
-  private getMoves(
-    info: string[][],
-    states: string[],
-    inputAlphabet: string[],
-  ) {
+
+  private getMoves(info: string[][], states: string[], inputSymbols: string[]) {
     const result: MealyMove[] = [];
 
     for (let i = 0; i < info.length; i++) {
       for (let j = 0; j < info[i].length; j++) {
-        const splitedPair = this.splitBySymbol(info[i][j], "/");
+        const initialStateAndInput: InitialStateAndInputSymbol = {
+          initialState: states[j],
+          inputSymbol: inputSymbols[i],
+        };
+
+        if (info[i][j] === this.DEFAULT_EMPTY_SYMBOL) {
+          result.push({
+            destinationStateAndSignal: { destinationState: "-", signal: "-" },
+            initialStateAndInput,
+          });
+
+          continue;
+        }
+
+        const splitedPair = this.mealyMooreHelper.splitBySymbol(
+          info[i][j],
+          this.separatorSymbol,
+        );
 
         const destinationStateAndSignal: DestinationStateAndSignal = {
           destinationState: splitedPair[0],
           signal: splitedPair[1],
-        };
-
-        const initialStateAndInput: InitialStateAndInputSymbol = {
-          initialState: states[j],
-          inputSymbol: inputAlphabet[i],
         };
 
         result.push({ destinationStateAndSignal, initialStateAndInput });
@@ -85,143 +93,54 @@ class MealyMachineData implements IMachineData {
   }
 
   public convertToMoore() {
-    const newStateToOldPair = this.buildMooreStates(
-      this.inputAlphabet,
+    const oldAndNewStates = this.mealyMooreHelper.buildMooreStatesByMealy(
+      this.inputSymbols,
       this.states,
       this.moves,
     );
 
-    // const mooreStates = Array.from(newStateToOldPair.keys()).sort();
-    const mooreStates = newStateToOldPair.map((item) => item.state);
+    const mooreStates = oldAndNewStates.map((item) => item.state);
 
-    const mooreStateSignals = this.getMooreStateSignals(newStateToOldPair);
+    const mooreStateSignals =
+      this.mealyMooreHelper.getMooreStateSignalsByMealy(oldAndNewStates);
 
-    const mooreMoves = this.getMooreMoves(
+    const mooreMoves = this.mealyMooreHelper.getMooreMovesByMealy(
       mooreStates,
       this.moves,
-      this.inputAlphabet,
-      newStateToOldPair,
+      this.inputSymbols,
+      oldAndNewStates,
     );
 
-    console.log(mooreMoves);
-
     return new MooreMachineData({
-      inputAlphabet: this.inputAlphabet,
+      inputSymbols: this.inputSymbols,
       moves: mooreMoves,
       states: mooreStates,
       stateSignals: mooreStateSignals,
     });
   }
 
-  private getMooreMoves(
-    mooreStates: string[],
-    mealyMoves: MealyMove[],
-    inputSymbols: string[],
-    stateToOldStateAndSignalMap: TestType[],
-  ) {
-    const result: DeterministicMoves[] = [];
+  public toString() {
+    let mealyStringData = this.states.join(" ") + "\n";
 
-    for (const state of mooreStates) {
-      const oldState = stateToOldStateAndSignalMap.find(
-        (item) => item.state === state,
-      ).destinationStateAndSignal.destinationState;
-
-      if (oldState) {
-        for (const symbol of inputSymbols) {
-          const key: InitialStateAndInputSymbol = {
-            initialState: state,
-            inputSymbol: symbol,
-          };
-
-          const mealyMove = mealyMoves.find(
+    for (let i = 0; i < this.inputSymbols.length; i++) {
+      mealyStringData =
+        mealyStringData +
+        this.moves
+          .filter(
             (item) =>
-              JSON.stringify(item.initialStateAndInput) ===
-              JSON.stringify({
-                initialState: oldState,
-                inputSymbol: symbol,
-              }),
-          );
-
-          if (mealyMove) {
-            result.push({
-              initialStateAndInput: key,
-              destinationState: stateToOldStateAndSignalMap.find(
-                (item) =>
-                  JSON.stringify(item.destinationStateAndSignal) ===
-                  JSON.stringify(mealyMove.destinationStateAndSignal),
-              ).destinationStateAndSignal.destinationState,
-            });
-          }
-        }
-      }
+              item.initialStateAndInput.inputSymbol === this.inputSymbols[i],
+          )
+          .map(
+            (item) =>
+              item.destinationStateAndSignal.destinationState +
+              this.separatorSymbol +
+              item.destinationStateAndSignal.signal,
+          )
+          .join(" ") +
+        "\n";
     }
 
-    return result;
-  }
-
-  private getMooreStateSignals(newStateToOldPair: TestType[]) {
-    const result: DestinationStateAndSignal[] = [];
-
-    newStateToOldPair.forEach(({ destinationStateAndSignal, state }) => {
-      result.push({
-        signal: destinationStateAndSignal.signal,
-        destinationState: state,
-      });
-    });
-
-    return result;
-  }
-
-  private buildMooreStates(
-    inputAlphabet: string[],
-    states: string[],
-    moves: MealyMove[],
-  ) {
-    const processedStates: Map<string, boolean> = new Map();
-
-    const result: TestType[] = [];
-    let counter = 0;
-
-    for (const inputSymbol of inputAlphabet) {
-      for (const state of states) {
-        const key: InitialStateAndInputSymbol = {
-          initialState: state,
-          inputSymbol,
-        };
-
-        const destinationStateAndSignal = moves.find(
-          (item) =>
-            JSON.stringify(item.initialStateAndInput) === JSON.stringify(key),
-        ).destinationStateAndSignal;
-
-        if (
-          destinationStateAndSignal &&
-          !processedStates.get(JSON.stringify(destinationStateAndSignal))
-        ) {
-          const stateName = this.getNewStateName(counter);
-
-          result.push({ state: stateName, destinationStateAndSignal });
-
-          counter++;
-          processedStates.set(JSON.stringify(destinationStateAndSignal), true);
-        }
-      }
-    }
-
-    return result;
-  }
-
-  private getNewStateName(number: number) {
-    return "S" + number;
-  }
-
-  private splitBySymbol(unsplitedString: string, splitBySymbol: string) {
-    return unsplitedString.split(splitBySymbol);
-  }
-
-  public getConvertedData() {
-    // Convert Mealy to String
-    return "mealy data";
+    return mealyStringData;
   }
 }
 

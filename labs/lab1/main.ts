@@ -1,7 +1,11 @@
-import FileHandler, { ConversionMode, DataFromFile } from "./FileHandler";
+import { ConversionMode, DataFromFile } from "./MealyMooreFileHandler";
 import IMachineData from "./IMachineData";
 import MealyMachineData from "./MealyMachineData";
 import MooreMachineData from "./MooreMachineData";
+import MealyMooreFileHandler from "./MealyMooreFileHandler";
+
+const DEFAULT_INPUT_FILE_PATH = "input.txt";
+const DEFAULT_OUTPUT_FILE_PATH = "output.txt";
 
 const processData = (data: DataFromFile) => {
   let machineData: IMachineData;
@@ -24,12 +28,12 @@ const processData = (data: DataFromFile) => {
 };
 
 try {
-  const fileReader = new FileHandler("input-mealy.txt");
-  const data = fileReader.readDataFromFile();
+  const fileReader = new MealyMooreFileHandler();
+  const data = fileReader.readDataFromFile(DEFAULT_INPUT_FILE_PATH);
 
   const machineData = processData(data);
 
-  console.log(machineData.getConvertedData());
+  fileReader.writeDataInFile(DEFAULT_OUTPUT_FILE_PATH, machineData.toString());
 } catch (error) {
   const err = error as Error;
   console.log(err.message);

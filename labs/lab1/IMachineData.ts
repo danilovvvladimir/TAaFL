@@ -1,5 +1,5 @@
 interface IMachineData {
-  getConvertedData: () => string;
+  toString: () => string;
 }
 
 export default IMachineData;
