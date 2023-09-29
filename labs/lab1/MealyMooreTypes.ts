@@ -25,7 +25,7 @@ export type MealyMove = {
   destinationStateAndSignal: DestinationStateAndSignal;
 };
 
-export type TestType = {
+export type NewStateAndOldStateWithSignal = {
   state: string;
   destinationStateAndSignal: DestinationStateAndSignal;
 };

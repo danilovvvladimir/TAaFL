@@ -1,39 +1,54 @@
-import { ConversionMode, DataFromFile } from "./MealyMooreFileHandler";
-import IMachineData from "./IMachineData";
+import { ConversionMode } from "./MealyMooreFileHandler";
 import MealyMachineData from "./MealyMachineData";
 import MooreMachineData from "./MooreMachineData";
 import MealyMooreFileHandler from "./MealyMooreFileHandler";
+import MealyMooreDrawer from "./MealyMooreDrawer";
 
-const DEFAULT_INPUT_FILE_PATH = "input.txt";
-const DEFAULT_OUTPUT_FILE_PATH = "output.txt";
+const INPUT_FILE_PATH = "input.txt";
+const OUTPUT_FILE_PATH = "output.txt";
+const MEALY_GRAPH_PATH = "mealy-graph.png";
+const MOORE_GRAPH_PATH = "moore-graph.png";
 
-const processData = (data: DataFromFile) => {
-  let machineData: IMachineData;
+try {
+  const fileReader = new MealyMooreFileHandler();
+  const data = fileReader.readDataFromFile(INPUT_FILE_PATH);
+
+  const mealyMooreDrawer = new MealyMooreDrawer();
 
   switch (data.mode) {
     case ConversionMode.MEALY:
       const mealyMachineData = new MealyMachineData(data.matrix);
-      machineData = mealyMachineData.convertToMoore();
+      const convertedMooreMachineData = mealyMachineData.convertToMoore();
+
+      mealyMooreDrawer.drawMooreGraph(
+        convertedMooreMachineData.getMoves(),
+        convertedMooreMachineData.getStateSignals(),
+        MOORE_GRAPH_PATH,
+      );
+
+      fileReader.writeDataInFile(
+        OUTPUT_FILE_PATH,
+        convertedMooreMachineData.toString(),
+      );
       break;
     case ConversionMode.MOORE:
       const mooreMachineData = new MooreMachineData(data.matrix);
-      machineData = mooreMachineData.convertToMealy();
+      const convertedMealyMachineData = mooreMachineData.convertToMealy();
+
+      mealyMooreDrawer.drawMealyGraph(
+        convertedMealyMachineData.getMoves(),
+        MEALY_GRAPH_PATH,
+      );
+
+      fileReader.writeDataInFile(
+        OUTPUT_FILE_PATH,
+        convertedMealyMachineData.toString(),
+      );
       break;
 
     default:
       throw new Error("Unavailable conversion type");
   }
-
-  return machineData;
-};
-
-try {
-  const fileReader = new MealyMooreFileHandler();
-  const data = fileReader.readDataFromFile(DEFAULT_INPUT_FILE_PATH);
-
-  const machineData = processData(data);
-
-  fileReader.writeDataInFile(DEFAULT_OUTPUT_FILE_PATH, machineData.toString());
 } catch (error) {
   const err = error as Error;
   console.log(err.message);

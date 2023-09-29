@@ -1,4 +1,3 @@
-import IMachineData from "./IMachineData";
 import MealyMooreHelper from "./MealyMooreHelper";
 import {
   MealyMove,
@@ -8,7 +7,7 @@ import {
 } from "./MealyMooreTypes";
 import MooreMachineData from "./MooreMachineData";
 
-class MealyMachineData implements IMachineData {
+class MealyMachineData {
   private readonly DEFAULT_SEPARATOR_SYMBOL: string = "/";
   private readonly DEFAULT_STATE_SYMBOL: string = "";
   private readonly DEFAULT_EMPTY_SYMBOL: string = "-";
@@ -47,7 +46,7 @@ class MealyMachineData implements IMachineData {
         this.inputSymbols.push(`${this.DEFAULT_INPUT_SYMBOL}${i + 1}`);
       }
 
-      this.moves = this.getMoves(args, this.states, this.inputSymbols);
+      this.moves = this.createMoves(args, this.states, this.inputSymbols);
     } else {
       const { inputSymbols, moves, states } = args;
       this.states = states;
@@ -56,7 +55,11 @@ class MealyMachineData implements IMachineData {
     }
   }
 
-  private getMoves(info: string[][], states: string[], inputSymbols: string[]) {
+  private createMoves(
+    info: string[][],
+    states: string[],
+    inputSymbols: string[],
+  ) {
     const result: MealyMove[] = [];
 
     for (let i = 0; i < info.length; i++) {
@@ -141,6 +144,10 @@ class MealyMachineData implements IMachineData {
     }
 
     return mealyStringData;
+  }
+
+  public getMoves() {
+    return this.moves;
   }
 }
 

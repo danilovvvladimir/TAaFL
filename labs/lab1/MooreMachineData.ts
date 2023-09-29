@@ -1,4 +1,3 @@
-import IMachineData from "./IMachineData";
 import MealyMachineData from "./MealyMachineData";
 import MealyMooreHelper from "./MealyMooreHelper";
 import {
@@ -8,7 +7,7 @@ import {
   MooreMove,
 } from "./MealyMooreTypes";
 
-class MooreMachineData implements IMachineData {
+class MooreMachineData {
   private readonly DEFAULT_EMPTY_SYMBOL: string = "-";
   private readonly DEFAULT_INPUT_SYMBOL: string = "x";
   private readonly DEFAULT_SEPARATOR_SYMBOL: string = "/";
@@ -46,7 +45,11 @@ class MooreMachineData implements IMachineData {
         });
       }
 
-      this.moves = this.getMoves(args.slice(1), this.states, this.inputSymbols);
+      this.moves = this.createMoves(
+        args.slice(1),
+        this.states,
+        this.inputSymbols,
+      );
     } else {
       const { inputSymbols, moves, stateSignals, states } = args;
 
@@ -57,7 +60,11 @@ class MooreMachineData implements IMachineData {
     }
   }
 
-  private getMoves(info: string[][], states: string[], inputSymbols: string[]) {
+  private createMoves(
+    info: string[][],
+    states: string[],
+    inputSymbols: string[],
+  ) {
     const transposedRecords = this.mealyMooreHelper.transposeMatrix(info);
 
     const result: MooreMove[] = [];
@@ -65,9 +72,6 @@ class MooreMachineData implements IMachineData {
     for (let i = 0; i < transposedRecords.length; i++) {
       for (let j = 0; j < transposedRecords[i].length; j++) {
         const move = transposedRecords[i][j];
-        if (move === this.DEFAULT_EMPTY_SYMBOL) {
-          // continue;
-        }
 
         const stateAndInput: InitialStateAndInputSymbol = {
           initialState: states[i],
@@ -115,6 +119,14 @@ class MooreMachineData implements IMachineData {
     }
 
     return mooreStringData;
+  }
+
+  public getMoves() {
+    return this.moves;
+  }
+
+  public getStateSignals() {
+    return this.stateSignals;
   }
 }
 

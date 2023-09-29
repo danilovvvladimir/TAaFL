@@ -4,7 +4,7 @@ import {
   MealyMove,
   MooreMove,
   ParsedMealyMove,
-  TestType,
+  NewStateAndOldStateWithSignal,
 } from "./MealyMooreTypes";
 
 class MealyMooreHelper {
@@ -78,7 +78,7 @@ class MealyMooreHelper {
     // TODO: мб сет вместо этого
     const processedStates: Map<string, boolean> = new Map();
 
-    const result: TestType[] = [];
+    const result: NewStateAndOldStateWithSignal[] = [];
     let counter = 1;
 
     for (const inputSymbol of inputSymbols) {
@@ -114,7 +114,9 @@ class MealyMooreHelper {
     return result;
   }
 
-  public getMooreStateSignalsByMealy(oldAndNewStates: TestType[]) {
+  public getMooreStateSignalsByMealy(
+    oldAndNewStates: NewStateAndOldStateWithSignal[],
+  ) {
     const result: DestinationStateAndSignal[] = [];
 
     oldAndNewStates.forEach(({ destinationStateAndSignal, state }) => {
@@ -131,7 +133,7 @@ class MealyMooreHelper {
     mooreStates: string[],
     mealyMoves: MealyMove[],
     inputSymbols: string[],
-    oldAndNewStates: TestType[],
+    oldAndNewStates: NewStateAndOldStateWithSignal[],
   ) {
     const result: MooreMove[] = [];
 
@@ -199,22 +201,18 @@ class MealyMooreHelper {
         const mealyCorrectMove = matrix[i][j];
         const numericSequence = mealyCorrectMove.match(regex);
 
-        if (numericSequence && numericSequence.index !== undefined) {
-          const symbolAfterNumericSequence =
-            mealyCorrectMove[numericSequence.index + numericSequence[0].length];
+        const symbolAfterNumericSequence =
+          mealyCorrectMove[numericSequence.index + numericSequence[0].length];
 
-          const symbolBeforeNumericSequence =
-            numericSequence.index - 1 < 0
-              ? ""
-              : mealyCorrectMove[numericSequence.index - 1];
+        const symbolBeforeNumericSequence =
+          numericSequence.index - 1 < 0
+            ? ""
+            : mealyCorrectMove[numericSequence.index - 1];
 
-          if (symbolAfterNumericSequence) {
-            return {
-              separatorSymbol: symbolAfterNumericSequence,
-              stateSymbol: symbolBeforeNumericSequence,
-            };
-          }
-        }
+        return {
+          separatorSymbol: symbolAfterNumericSequence,
+          stateSymbol: symbolBeforeNumericSequence,
+        };
       }
     }
   }
