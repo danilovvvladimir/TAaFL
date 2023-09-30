@@ -1,6 +1,4 @@
 import * as graphviz from "graphviz";
-import MealyMachineData from "./MealyMachineData";
-import MooreMachineData from "./MooreMachineData";
 import {
   DestinationStateAndSignal,
   MealyMove,

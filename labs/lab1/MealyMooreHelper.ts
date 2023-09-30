@@ -75,11 +75,10 @@ class MealyMooreHelper {
     mealyStates: string[],
     mealyMoves: MealyMove[],
   ) {
-    // TODO: мб сет вместо этого
-    const processedStates: Map<string, boolean> = new Map();
+    const processedStates = new Set<string>();
 
     const result: NewStateAndOldStateWithSignal[] = [];
-    let counter = 1;
+    let stateNumberCounter = 1;
 
     for (const inputSymbol of inputSymbols) {
       for (const state of mealyStates) {
@@ -101,12 +100,15 @@ class MealyMooreHelper {
 
         if (
           destinationStateAndSignal &&
-          !processedStates.get(JSON.stringify(destinationStateAndSignal))
+          !processedStates.has(JSON.stringify(destinationStateAndSignal))
         ) {
-          result.push({ state: `${counter}`, destinationStateAndSignal });
+          result.push({
+            state: `${stateNumberCounter}`,
+            destinationStateAndSignal,
+          });
 
-          counter++;
-          processedStates.set(JSON.stringify(destinationStateAndSignal), true);
+          stateNumberCounter++;
+          processedStates.add(JSON.stringify(destinationStateAndSignal));
         }
       }
     }
