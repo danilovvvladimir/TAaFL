@@ -43,9 +43,7 @@ class MealyMooreDrawer {
           initialStateAndInput.initialState,
           destinationState,
           {
-            label: mooreStateSignals.find(
-              (item) => item.destinationState === destinationState,
-            ).signal,
+            label: initialStateAndInput.inputSymbol,
           },
         );
       }
