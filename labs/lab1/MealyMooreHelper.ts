@@ -1,10 +1,10 @@
 import {
-  DestinationStateAndSignal,
-  InitialStateAndInputSymbol,
+  StateAndInputSymbol,
   MealyMove,
   MooreMove,
   ParsedMealyMove,
-  NewStateAndOldStateWithSignal,
+  StateAndSignal,
+  MooreState,
 } from "./MealyMooreTypes";
 
 class MealyMooreHelper {
@@ -34,17 +34,17 @@ class MealyMooreHelper {
 
   public getMealyMovesByMoore(
     mooreMoves: MooreMove[],
-    mooreStateSignals: DestinationStateAndSignal[],
+    mooreStateSignals: StateAndSignal[],
   ): MealyMove[] {
     const result: MealyMove[] = [];
 
     for (const move of mooreMoves) {
-      const { initialStateAndInput, destinationState } = move;
+      const { stateAndInputSymbol, destinationState } = move;
       if (destinationState === this.emptyStateSymbol) {
         result.push({
-          initialStateAndInput,
+          stateAndInputSymbol,
           destinationStateAndSignal: {
-            destinationState: this.emptyStateSymbol,
+            state: this.emptyStateSymbol,
             signal: this.emptyStateSymbol,
           },
         });
@@ -53,11 +53,11 @@ class MealyMooreHelper {
       }
 
       result.push({
-        initialStateAndInput,
+        stateAndInputSymbol,
         destinationStateAndSignal: {
-          destinationState,
+          state: destinationState,
           signal: mooreStateSignals.find(
-            (item) => item.destinationState === destinationState,
+            (item) => item.state === destinationState,
           ).signal,
         },
       });
@@ -74,27 +74,25 @@ class MealyMooreHelper {
     inputSymbols: string[],
     mealyStates: string[],
     mealyMoves: MealyMove[],
-  ) {
+  ): MooreState[] {
     const processedStates = new Set<string>();
 
-    const result: NewStateAndOldStateWithSignal[] = [];
+    const result: MooreState[] = [];
     let stateNumberCounter = 1;
 
     for (const inputSymbol of inputSymbols) {
       for (const state of mealyStates) {
-        const key: InitialStateAndInputSymbol = {
-          initialState: state,
+        const key: StateAndInputSymbol = {
+          state,
           inputSymbol,
         };
 
         const destinationStateAndSignal = mealyMoves.find(
           (item) =>
-            JSON.stringify(item.initialStateAndInput) === JSON.stringify(key),
+            JSON.stringify(item.stateAndInputSymbol) === JSON.stringify(key),
         ).destinationStateAndSignal;
 
-        if (
-          destinationStateAndSignal.destinationState === this.emptyStateSymbol
-        ) {
+        if (destinationStateAndSignal.state === this.emptyStateSymbol) {
           continue;
         }
 
@@ -103,8 +101,8 @@ class MealyMooreHelper {
           !processedStates.has(JSON.stringify(destinationStateAndSignal))
         ) {
           result.push({
-            state: `${stateNumberCounter}`,
-            destinationStateAndSignal,
+            newState: `${stateNumberCounter}`,
+            originalStateAndSignal: destinationStateAndSignal,
           });
 
           stateNumberCounter++;
@@ -116,58 +114,34 @@ class MealyMooreHelper {
     return result;
   }
 
-  public getMooreStateSignalsByMealy(
-    oldAndNewStates: NewStateAndOldStateWithSignal[],
-  ) {
-    const result: DestinationStateAndSignal[] = [];
-
-    oldAndNewStates.forEach(({ destinationStateAndSignal, state }) => {
-      result.push({
-        signal: destinationStateAndSignal.signal,
-        destinationState: state,
-      });
-    });
-
-    return result;
-  }
-
   public getMooreMovesByMealy(
-    mooreStates: string[],
+    mooreStates: MooreState[],
     mealyMoves: MealyMove[],
     inputSymbols: string[],
-    oldAndNewStates: NewStateAndOldStateWithSignal[],
   ) {
     const result: MooreMove[] = [];
 
-    for (const state of mooreStates) {
-      const oldState = oldAndNewStates.find((item) => item.state === state)
-        .destinationStateAndSignal.destinationState;
-
-      if (!oldState) {
-        continue;
-      }
-
-      for (const symbol of inputSymbols) {
-        const key: InitialStateAndInputSymbol = {
-          initialState: state,
-          inputSymbol: symbol,
+    for (const mooreState of mooreStates) {
+      for (const inputSymbol of inputSymbols) {
+        const key: StateAndInputSymbol = {
+          state: mooreState.newState,
+          inputSymbol,
         };
 
         const mealyMove = mealyMoves.find(
           (item) =>
-            JSON.stringify(item.initialStateAndInput) ===
+            JSON.stringify(item.stateAndInputSymbol) ===
             JSON.stringify({
-              initialState: oldState,
-              inputSymbol: symbol,
-            }),
+              state: mooreState.originalStateAndSignal.state,
+              inputSymbol,
+            } as StateAndInputSymbol),
         );
 
         if (
-          mealyMove.destinationStateAndSignal.destinationState ===
-          this.emptyStateSymbol
+          mealyMove.destinationStateAndSignal.state === this.emptyStateSymbol
         ) {
           result.push({
-            initialStateAndInput: key,
+            stateAndInputSymbol: key,
             destinationState: this.emptyStateSymbol,
           });
 
@@ -175,12 +149,12 @@ class MealyMooreHelper {
         }
 
         result.push({
-          initialStateAndInput: key,
-          destinationState: oldAndNewStates.find(
+          stateAndInputSymbol: key,
+          destinationState: mooreStates.find(
             (item) =>
-              JSON.stringify(item.destinationStateAndSignal) ===
+              JSON.stringify(item.originalStateAndSignal) ===
               JSON.stringify(mealyMove.destinationStateAndSignal),
-          ).state,
+          ).newState,
         });
       }
     }

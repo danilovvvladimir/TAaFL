@@ -1,25 +1,21 @@
 import * as graphviz from "graphviz";
-import {
-  DestinationStateAndSignal,
-  MealyMove,
-  MooreMove,
-} from "./MealyMooreTypes";
+import { MealyMove, MooreMove, MooreState } from "./MealyMooreTypes";
 
 class MealyMooreDrawer {
   private readonly graph = graphviz.digraph("G");
 
   public drawMealyGraph(mealyMoves: MealyMove[], pngFilepath: string) {
     for (const move of mealyMoves) {
-      const { destinationStateAndSignal, initialStateAndInput } = move;
+      const { destinationStateAndSignal, stateAndInputSymbol } = move;
 
-      this.graph.addNode(initialStateAndInput.initialState);
+      this.graph.addNode(stateAndInputSymbol.state);
 
-      if (destinationStateAndSignal.destinationState !== "-") {
+      if (destinationStateAndSignal.state !== "-") {
         this.graph.addEdge(
-          initialStateAndInput.initialState,
-          destinationStateAndSignal.destinationState,
+          stateAndInputSymbol.state,
+          destinationStateAndSignal.state,
           {
-            label: `${initialStateAndInput.inputSymbol}/${destinationStateAndSignal.signal}`,
+            label: `${stateAndInputSymbol.inputSymbol}/${destinationStateAndSignal.signal}`,
           },
         );
       }
@@ -30,22 +26,29 @@ class MealyMooreDrawer {
 
   public drawMooreGraph(
     mooreMoves: MooreMove[],
-    mooreStateSignals: DestinationStateAndSignal[],
+    mooreStates: MooreState[],
     pngFilepath: string,
   ) {
     for (const move of mooreMoves) {
-      const { destinationState, initialStateAndInput } = move;
+      const { destinationState, stateAndInputSymbol } = move;
 
-      this.graph.addNode(initialStateAndInput.initialState);
+      const mooreState = mooreStates.find(
+        (mooreState) => mooreState.newState === stateAndInputSymbol.state,
+      );
+
+      const vertexName = `${mooreState.newState} (${mooreState.originalStateAndSignal.state}/${mooreState.originalStateAndSignal.signal})`;
+      this.graph.addNode(vertexName);
 
       if (destinationState !== "-") {
-        this.graph.addEdge(
-          initialStateAndInput.initialState,
-          destinationState,
-          {
-            label: initialStateAndInput.inputSymbol,
-          },
+        const mooreDestinationState = mooreStates.find(
+          (mooreState) => mooreState.newState === destinationState,
         );
+
+        const destinationVertexName = `${mooreDestinationState.newState} (${mooreDestinationState.originalStateAndSignal.state}/${mooreDestinationState.originalStateAndSignal.signal})`;
+
+        this.graph.addEdge(vertexName, destinationVertexName, {
+          label: stateAndInputSymbol.inputSymbol,
+        });
       }
     }
 

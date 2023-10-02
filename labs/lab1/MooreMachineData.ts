@@ -1,10 +1,10 @@
 import MealyMachineData from "./MealyMachineData";
 import MealyMooreHelper from "./MealyMooreHelper";
 import {
-  DestinationStateAndSignal,
-  InitialStateAndInputSymbol,
+  StateAndInputSymbol,
   MooreMachineDataInfo,
   MooreMove,
+  MooreState,
 } from "./MealyMooreTypes";
 
 class MooreMachineData {
@@ -12,10 +12,9 @@ class MooreMachineData {
   private readonly DEFAULT_INPUT_SYMBOL: string = "x";
   private readonly DEFAULT_SEPARATOR_SYMBOL: string = "/";
 
-  private states: string[] = [];
+  private states: MooreState[] = [];
   private inputSymbols: string[] = [];
   private outputAlphabet: string[] = [];
-  private stateSignals: DestinationStateAndSignal[] = [];
   private moves: MooreMove[] = [];
 
   private mealyMooreHelper = new MealyMooreHelper(this.DEFAULT_EMPTY_SYMBOL);
@@ -25,7 +24,7 @@ class MooreMachineData {
 
   constructor(args: string[][] | MooreMachineDataInfo) {
     if (Array.isArray(args)) {
-      if (!args || args.length === 0) {
+      if (args.length === 0) {
         return;
       }
 
@@ -36,12 +35,16 @@ class MooreMachineData {
       this.outputAlphabet = args[0];
 
       for (let i = 0; i < args[0].length; i++) {
-        this.states.push(`${i + 1}`);
-        this.stateSignals.push({
-          destinationState: `${i + 1}`,
-          signal: this.outputAlphabet[i].split(
-            this.DEFAULT_SEPARATOR_SYMBOL,
-          )[1],
+        const [originalState, originalSignal] = this.outputAlphabet[i].split(
+          this.DEFAULT_SEPARATOR_SYMBOL,
+        );
+
+        this.states.push({
+          newState: `${i + 1}`,
+          originalStateAndSignal: {
+            state: originalState,
+            signal: originalSignal,
+          },
         });
       }
 
@@ -51,18 +54,17 @@ class MooreMachineData {
         this.inputSymbols,
       );
     } else {
-      const { inputSymbols, moves, stateSignals, states } = args;
+      const { inputSymbols, moves, states } = args;
 
       this.inputSymbols = inputSymbols;
       this.moves = moves;
-      this.stateSignals = stateSignals;
       this.states = states;
     }
   }
 
   private createMoves(
     info: string[][],
-    states: string[],
+    states: MooreState[],
     inputSymbols: string[],
   ) {
     const transposedRecords = this.mealyMooreHelper.transposeMatrix(info);
@@ -73,13 +75,13 @@ class MooreMachineData {
       for (let j = 0; j < transposedRecords[i].length; j++) {
         const move = transposedRecords[i][j];
 
-        const stateAndInput: InitialStateAndInputSymbol = {
-          initialState: states[i],
+        const stateAndInputSymbol: StateAndInputSymbol = {
+          state: states[i].newState,
           inputSymbol: inputSymbols[j],
         };
 
         result.push({
-          initialStateAndInput: stateAndInput,
+          stateAndInputSymbol: stateAndInputSymbol,
           destinationState: move,
         });
       }
@@ -91,19 +93,28 @@ class MooreMachineData {
   public convertToMealy() {
     const mealyMoves = this.mealyMooreHelper.getMealyMovesByMoore(
       this.moves,
-      this.stateSignals,
+      this.states.map((state) => {
+        return {
+          state: state.newState,
+          signal: state.originalStateAndSignal.signal,
+        };
+      }),
     );
 
     return new MealyMachineData({
       inputSymbols: this.inputSymbols,
       moves: mealyMoves,
-      states: this.states,
+      states: this.states.map((state) => state.newState),
     });
   }
 
   public toString() {
     let mooreStringData =
-      this.stateSignals.map((item) => item.signal).join(" ") + "\n";
+      this.states
+        .map((item) => {
+          return `${item.originalStateAndSignal.state}/${item.originalStateAndSignal.signal}`;
+        })
+        .join(" ") + "\n";
 
     for (let i = 0; i < this.inputSymbols.length; i++) {
       mooreStringData =
@@ -111,7 +122,7 @@ class MooreMachineData {
         this.moves
           .filter(
             (item) =>
-              item.initialStateAndInput.inputSymbol === this.inputSymbols[i],
+              item.stateAndInputSymbol.inputSymbol === this.inputSymbols[i],
           )
           .map((item) => item.destinationState)
           .join(" ") +
@@ -125,8 +136,8 @@ class MooreMachineData {
     return this.moves;
   }
 
-  public getStateSignals() {
-    return this.stateSignals;
+  public getStates() {
+    return this.states;
   }
 }
 

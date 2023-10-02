@@ -1,9 +1,9 @@
 import MealyMooreHelper from "./MealyMooreHelper";
 import {
   MealyMove,
-  MealyMachineDataProps,
-  DestinationStateAndSignal,
-  InitialStateAndInputSymbol,
+  MealyMachineDataInfo,
+  StateAndInputSymbol,
+  StateAndSignal,
 } from "./MealyMooreTypes";
 import MooreMachineData from "./MooreMachineData";
 
@@ -16,17 +16,17 @@ class MealyMachineData {
   private separatorSymbol: string = this.DEFAULT_SEPARATOR_SYMBOL;
   private stateSymbol: string = this.DEFAULT_STATE_SYMBOL;
 
-  private states: string[] = [];
   private inputSymbols: string[] = [];
+  private states: string[] = [];
   private moves: MealyMove[] = [];
 
   private mealyMooreHelper = new MealyMooreHelper(this.DEFAULT_EMPTY_SYMBOL);
 
   constructor(info: string[][]);
-  constructor(mealyMachineDataProps: MealyMachineDataProps);
-  constructor(args: string[][] | MealyMachineDataProps) {
+  constructor(MealyMachineDataInfo: MealyMachineDataInfo);
+  constructor(args: string[][] | MealyMachineDataInfo) {
     if (Array.isArray(args)) {
-      if (!args || args.length === 0) {
+      if (args.length === 0) {
         return;
       }
 
@@ -64,15 +64,18 @@ class MealyMachineData {
 
     for (let i = 0; i < info.length; i++) {
       for (let j = 0; j < info[i].length; j++) {
-        const initialStateAndInput: InitialStateAndInputSymbol = {
-          initialState: states[j],
+        const stateAndInputSymbol: StateAndInputSymbol = {
+          state: states[j],
           inputSymbol: inputSymbols[i],
         };
 
         if (info[i][j] === this.DEFAULT_EMPTY_SYMBOL) {
           result.push({
-            destinationStateAndSignal: { destinationState: "-", signal: "-" },
-            initialStateAndInput,
+            destinationStateAndSignal: {
+              state: this.DEFAULT_EMPTY_SYMBOL,
+              signal: this.DEFAULT_EMPTY_SYMBOL,
+            },
+            stateAndInputSymbol,
           });
 
           continue;
@@ -83,12 +86,12 @@ class MealyMachineData {
           this.separatorSymbol,
         );
 
-        const destinationStateAndSignal: DestinationStateAndSignal = {
-          destinationState: splitedPair[0],
+        const destinationStateAndSignal: StateAndSignal = {
+          state: splitedPair[0],
           signal: splitedPair[1],
         };
 
-        result.push({ destinationStateAndSignal, initialStateAndInput });
+        result.push({ destinationStateAndSignal, stateAndInputSymbol });
       }
     }
 
@@ -96,29 +99,22 @@ class MealyMachineData {
   }
 
   public convertToMoore() {
-    const oldAndNewStates = this.mealyMooreHelper.buildMooreStatesByMealy(
+    const mooreStates = this.mealyMooreHelper.buildMooreStatesByMealy(
       this.inputSymbols,
       this.states,
       this.moves,
     );
 
-    const mooreStates = oldAndNewStates.map((item) => item.state);
-
-    const mooreStateSignals =
-      this.mealyMooreHelper.getMooreStateSignalsByMealy(oldAndNewStates);
-
     const mooreMoves = this.mealyMooreHelper.getMooreMovesByMealy(
       mooreStates,
       this.moves,
       this.inputSymbols,
-      oldAndNewStates,
     );
 
     return new MooreMachineData({
       inputSymbols: this.inputSymbols,
       moves: mooreMoves,
       states: mooreStates,
-      stateSignals: mooreStateSignals,
     });
   }
 
@@ -131,11 +127,11 @@ class MealyMachineData {
         this.moves
           .filter(
             (item) =>
-              item.initialStateAndInput.inputSymbol === this.inputSymbols[i],
+              item.stateAndInputSymbol.inputSymbol === this.inputSymbols[i],
           )
           .map(
             (item) =>
-              item.destinationStateAndSignal.destinationState +
+              item.destinationStateAndSignal.state +
               this.separatorSymbol +
               item.destinationStateAndSignal.signal,
           )

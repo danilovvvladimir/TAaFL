@@ -1,42 +1,41 @@
 export type MooreMove = {
-  initialStateAndInput: InitialStateAndInputSymbol;
+  stateAndInputSymbol: StateAndInputSymbol;
   destinationState: string;
 };
 
-export type InitialStateAndInputSymbol = {
-  initialState: string;
+export type MealyMove = {
+  stateAndInputSymbol: StateAndInputSymbol;
+  destinationStateAndSignal: StateAndSignal;
+};
+
+export type StateAndInputSymbol = {
+  state: string;
   inputSymbol: string;
 };
 
-export type DestinationStateAndSignal = {
-  destinationState: string;
+export type StateAndSignal = {
+  state: string;
   signal: string;
 };
 
-export interface MooreMachineDataInfo {
-  states: string[];
+export type MooreMachineDataInfo = {
+  states: MooreState[];
   inputSymbols: string[];
-  stateSignals: DestinationStateAndSignal[];
   moves: MooreMove[];
-}
-
-export type MealyMove = {
-  initialStateAndInput: InitialStateAndInputSymbol;
-  destinationStateAndSignal: DestinationStateAndSignal;
 };
 
-export type NewStateAndOldStateWithSignal = {
-  state: string;
-  destinationStateAndSignal: DestinationStateAndSignal;
-};
-
-export interface MealyMachineDataProps {
+export type MealyMachineDataInfo = {
   states: string[];
   inputSymbols: string[];
   moves: MealyMove[];
-}
+};
 
-export interface ParsedMealyMove {
+export type ParsedMealyMove = {
   stateSymbol: string;
   separatorSymbol: string;
-}
+};
+
+export type MooreState = {
+  newState: string;
+  originalStateAndSignal: StateAndSignal;
+};

@@ -22,7 +22,7 @@ try {
 
       mealyMooreDrawer.drawMooreGraph(
         convertedMooreMachineData.getMoves(),
-        convertedMooreMachineData.getStateSignals(),
+        convertedMooreMachineData.getStates(),
         MOORE_GRAPH_PATH,
       );
 
