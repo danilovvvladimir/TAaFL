@@ -1,3 +1,4 @@
-S0/y1 S0/y2 S1/y1 S2/y2 S3/y1 S1/y2
-1 1 2 3 1 2
-4 4 4 5 6 4
+S0 S1 S2 S3 S4 S5
+S3/y1 S1/y0 S3/y1 S3/y1 S5/y0 S4/y0
+S5/y0 S1/y0 S1/y0 S2/y0 S5/y0 S5/y0
+S0/y0 S5/y1 S2/y0 S2/y0 S4/y1 S1/y1
