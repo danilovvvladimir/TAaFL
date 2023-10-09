@@ -118,76 +118,153 @@ class MealyMachineData {
     return this.moves;
   }
 
+  // private removeUnreachableMooreStates() {
+
+  // }
+
   public minimize(): void {
-    // Должен изменить states и moves.
-    console.log("mealy states", this.states);
-    console.log("mealy moves", this.moves);
-    const initialMap: Map<string, StateAndSignal[]> = new Map<
-      string,
-      StateAndSignal[]
-    >();
+    let [groupStatesMap, groupAmount] = this.buildOneEquivalencyGroups();
+    console.log("groupStatesMap", groupStatesMap);
+    console.log("amount", groupAmount);
 
-    for (const move of this.moves) {
-      const { destinationStateAndSignal, stateAndInputSymbol } = move;
+    let previousGroupAmount = -1;
 
-      if (!initialMap.has(stateAndInputSymbol.state)) {
-        initialMap.set(stateAndInputSymbol.state, [destinationStateAndSignal]);
-      } else {
-        const existingItem = initialMap.get(stateAndInputSymbol.state);
-        initialMap.set(stateAndInputSymbol.state, [
-          ...existingItem,
-          destinationStateAndSignal,
-        ]);
+    while (groupAmount !== previousGroupAmount) {
+      previousGroupAmount = groupAmount;
+
+      [groupStatesMap, groupAmount] = this.buildNextEquivalencyGroups(
+        groupStatesMap,
+        this.inputSymbols,
+        this.moves,
+      );
+
+      console.log("temp groupStatesMap", groupStatesMap);
+      console.log("temp amount", groupAmount);
+    }
+
+    // build minimaze mealy
+    console.log("final groupStatesMap", groupStatesMap);
+    console.log("final amount", groupAmount);
+  }
+
+  private buildOneEquivalencyGroups(): [Map<number, string[]>, number] {
+    const stateToGroupHashMap: Map<string, string> = new Map<string, string>();
+
+    for (const sourceState of this.states) {
+      for (const inputSymbol of this.inputSymbols) {
+        const key: StateAndInputSymbol = {
+          state: sourceState,
+          inputSymbol: inputSymbol,
+        };
+
+        const destinationSignal = this.moves.find(
+          (item) =>
+            JSON.stringify(item.stateAndInputSymbol) === JSON.stringify(key),
+        ).destinationStateAndSignal.signal;
+
+        if (stateToGroupHashMap.has(sourceState)) {
+          const existingRecord = stateToGroupHashMap.get(sourceState);
+          stateToGroupHashMap.set(
+            sourceState,
+            existingRecord + destinationSignal,
+          );
+        } else {
+          stateToGroupHashMap.set(sourceState, destinationSignal);
+        }
       }
     }
 
-    const firstGroup: Map<string, string[]> = new Map<string, string[]>();
+    const groupHashToStatesMap =
+      this.buildGroupHashToStatesMap(stateToGroupHashMap);
 
-    for (const move of initialMap) {
-      const [state, stateAndSignalArray] = move;
+    const groupToStatesMap: Map<number, string[]> = new Map<number, string[]>();
+    let groupAmount = 0;
 
-      const key = stateAndSignalArray.map((item) => item.signal).join("");
-
-      if (!firstGroup.has(key)) {
-        firstGroup.set(key, [state]);
-      } else {
-        firstGroup.set(key, [...firstGroup.get(key), state]);
-      }
+    for (const newStates of groupHashToStatesMap.values()) {
+      groupToStatesMap.set(groupAmount, newStates);
+      groupAmount++;
     }
 
-    console.log("initial map", initialMap);
-    console.log("firstGroup", firstGroup);
-    let oldGroupSize = firstGroup.size;
-    let newGroupSize: number = -1;
+    return [groupToStatesMap, groupAmount];
+  }
 
-    // while (oldGroupSize !== newGroupSize) {
-    const newGroup: Map<string, Set<string>> = new Map<string, Set<string>>();
-    const ttt = Array.from(firstGroup.values());
+  // Reverse мапы, могу иначе сделать
+  private buildGroupHashToStatesMap(stateToGroupHashMap: Map<string, string>) {
+    const result: Map<string, string[]> = new Map<string, string[]>();
 
-    for (const temp of firstGroup) {
-      const [key, states] = temp;
+    for (const [state, groupHash] of stateToGroupHashMap) {
+      if (!result.has(groupHash)) {
+        result.set(groupHash, []);
+      }
 
-      for (const state of states) {
-        const res = initialMap.get(state);
+      result.get(groupHash).push(state);
+    }
 
-        for (const stateAndSignal of res) {
-          const { signal, state } = stateAndSignal;
+    return result;
+  }
 
-          const index = ttt.findIndex((item) => item.includes(state)) + 1;
-          const finalIndex = "A" + index;
-          // console.log(`${state} = A${index}`);
-          if (!newGroup.has(finalIndex)) {
-            newGroup.set(finalIndex, new Set<string>().add(state));
+  private buildNextEquivalencyGroups(
+    groupToStatesMap: Map<number, string[]>,
+    inputSymbols: string[],
+    moves: MealyMove[],
+  ): [Map<number, string[]>, number] {
+    const stateToNewGroupMap: Map<number, string[]> = new Map();
+
+    const stateToGroupMap: Map<string, number> =
+      this.buildStateToGroupMap(groupToStatesMap);
+
+    let groupAmount = 0;
+
+    for (const groupStates of groupToStatesMap.values()) {
+      const stateToGroupHashMap: Map<string, string> = new Map();
+
+      for (const sourceState of groupStates) {
+        for (const inputSymbol of inputSymbols) {
+          const key: StateAndInputSymbol = {
+            state: sourceState,
+            inputSymbol: inputSymbol,
+          };
+          const destinationState = moves.find(
+            (item) =>
+              JSON.stringify(item.stateAndInputSymbol) === JSON.stringify(key),
+          ).destinationStateAndSignal.state;
+          const destinationGroup = stateToGroupMap.get(destinationState);
+
+          if (!stateToGroupHashMap.has(sourceState)) {
+            stateToGroupHashMap.set(sourceState, destinationGroup.toString());
           } else {
-            const existingItem = newGroup.get(finalIndex);
-            existingItem.add(state);
-            // newGroup.set(finalIndex, existingItem.add(state)]);
+            const existingRecord = stateToGroupHashMap.get(sourceState);
+
+            stateToGroupHashMap.set(
+              sourceState,
+              existingRecord + destinationGroup.toString(),
+            );
           }
         }
-        console.log(newGroup);
+      }
+
+      const groupHashToStatesMap =
+        this.buildGroupHashToStatesMap(stateToGroupHashMap);
+
+      for (const newStates of groupHashToStatesMap.values()) {
+        stateToNewGroupMap.set(groupAmount, newStates);
+        groupAmount++;
       }
     }
-    // }
+
+    return [stateToNewGroupMap, groupAmount];
+  }
+
+  private buildStateToGroupMap(groupToStatesMap: Map<number, string[]>) {
+    const result: Map<string, number> = new Map();
+
+    for (const [group, states] of groupToStatesMap) {
+      for (const state of states) {
+        result.set(state, group);
+      }
+    }
+
+    return result;
   }
 }
 
