@@ -36,6 +36,8 @@ export type ParsedMealyMove = {
 };
 
 export type MooreState = {
-  newState: string;
-  originalStateAndSignal: StateAndSignal;
+  // newState: string;
+  // originalStateAndSignal: StateAndSignal;s
+  state: string;
+  signal: string;
 };

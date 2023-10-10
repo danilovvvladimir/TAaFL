@@ -1,4 +1,4 @@
-6 3 mili
-S3/y1 S1/y0 S3/y1 S3/y1 S5/y0 S4/y0
-S5/y0 S1/y0 S1/y0 S2/y0 S5/y0 S5/y0
-S0/y0 S5/y1 S2/y0 S2/y0 S4/y1 S1/y1
+5 3 mur
+y1 y1 y2 y2 y1
+2 3 0 0 1
+1 1 1 1 4

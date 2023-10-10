@@ -8,7 +8,7 @@ module.exports = {
     // Прописывай для каждого таска точку входа и имя.
     //  Пример: SimUDuckExtra: "./labs/lab1/SimUDuckExtra/main.ts",
     // Conversion: "./labs/lab1/main.ts",
-    Minimazation: "./labs/lab2/main.ts",
+    Minimization: "./labs/lab2/main.ts",
   },
   output: {
     filename: "[name].bundle.js",

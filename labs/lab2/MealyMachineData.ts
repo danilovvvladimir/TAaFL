@@ -10,6 +10,7 @@ class MealyMachineData {
   private readonly DEFAULT_STATE_SYMBOL: string = "";
   private readonly DEFAULT_EMPTY_SYMBOL: string = "-";
   private readonly DEFAULT_INPUT_SYMBOL: string = "x";
+  private readonly DEFAULT_NEW_STATE_SYMBOL: string = "q";
 
   private separatorSymbol: string = this.DEFAULT_SEPARATOR_SYMBOL;
   private stateSymbol: string = this.DEFAULT_STATE_SYMBOL;
@@ -118,15 +119,8 @@ class MealyMachineData {
     return this.moves;
   }
 
-  // private removeUnreachableMooreStates() {
-
-  // }
-
   public minimize(): void {
     let [groupStatesMap, groupAmount] = this.buildOneEquivalencyGroups();
-    console.log("groupStatesMap", groupStatesMap);
-    console.log("amount", groupAmount);
-
     let previousGroupAmount = -1;
 
     while (groupAmount !== previousGroupAmount) {
@@ -137,14 +131,63 @@ class MealyMachineData {
         this.inputSymbols,
         this.moves,
       );
-
-      console.log("temp groupStatesMap", groupStatesMap);
-      console.log("temp amount", groupAmount);
     }
 
-    // build minimaze mealy
-    console.log("final groupStatesMap", groupStatesMap);
-    console.log("final amount", groupAmount);
+    // В Get newMinimizeValues выписать? или getMinimizeMealyStates tipo takova
+    const oldStateToNewStateMap: Map<string, string> = new Map();
+    const newStates: string[] = [];
+
+    for (const [group, oldStates] of groupStatesMap) {
+      const newState = this.getNewStateName(group);
+
+      for (const oldState of oldStates) {
+        oldStateToNewStateMap.set(oldState, newState);
+      }
+
+      newStates.push(newState);
+    }
+
+    newStates.sort();
+
+    const newMoves: MealyMove[] = [];
+
+    for (const states of groupStatesMap.values()) {
+      const baseState = states[0];
+
+      for (const inputSymbol of this.inputSymbols) {
+        const key: StateAndInputSymbol = {
+          state: baseState,
+          inputSymbol: inputSymbol,
+        };
+
+        const oldDestinationStateAndSignal = this.moves.find(
+          (item) =>
+            JSON.stringify(item.stateAndInputSymbol) === JSON.stringify(key),
+        ).destinationStateAndSignal;
+
+        const newKey: StateAndInputSymbol = {
+          state: oldStateToNewStateMap.get(baseState),
+          inputSymbol: inputSymbol,
+        };
+
+        newMoves.push({
+          stateAndInputSymbol: newKey,
+          destinationStateAndSignal: {
+            state: oldStateToNewStateMap.get(
+              oldDestinationStateAndSignal.state,
+            ),
+            signal: oldDestinationStateAndSignal.signal,
+          },
+        });
+      }
+    }
+
+    this.states = newStates;
+    this.moves = newMoves;
+  }
+
+  private getNewStateName(stateNumber: number) {
+    return this.DEFAULT_NEW_STATE_SYMBOL + stateNumber;
   }
 
   private buildOneEquivalencyGroups(): [Map<number, string[]>, number] {

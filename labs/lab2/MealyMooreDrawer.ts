@@ -33,18 +33,18 @@ class MealyMooreDrawer {
       const { destinationState, stateAndInputSymbol } = move;
 
       const mooreState = mooreStates.find(
-        (mooreState) => mooreState.newState === stateAndInputSymbol.state,
+        (mooreState) => mooreState.state === stateAndInputSymbol.state,
       );
 
-      const vertexName = `${mooreState.newState} (${mooreState.originalStateAndSignal.state}/${mooreState.originalStateAndSignal.signal})`;
+      const vertexName = `${mooreState.state} / ${mooreState.signal}`;
       this.graph.addNode(vertexName);
 
       if (destinationState !== "-") {
         const mooreDestinationState = mooreStates.find(
-          (mooreState) => mooreState.newState === destinationState,
+          (mooreState) => mooreState.state === destinationState,
         );
 
-        const destinationVertexName = `${mooreDestinationState.newState} (${mooreDestinationState.originalStateAndSignal.state}/${mooreDestinationState.originalStateAndSignal.signal})`;
+        const destinationVertexName = `${mooreDestinationState.state} / ${mooreDestinationState.signal}`;
 
         this.graph.addEdge(vertexName, destinationVertexName, {
           label: stateAndInputSymbol.inputSymbol,
