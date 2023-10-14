@@ -10,7 +10,6 @@ class MealyMachineData {
   private readonly DEFAULT_STATE_SYMBOL: string = "";
   private readonly DEFAULT_EMPTY_SYMBOL: string = "-";
   private readonly DEFAULT_INPUT_SYMBOL: string = "x";
-  private readonly DEFAULT_NEW_STATE_SYMBOL: string = "q";
 
   private separatorSymbol: string = this.DEFAULT_SEPARATOR_SYMBOL;
   private stateSymbol: string = this.DEFAULT_STATE_SYMBOL;
@@ -19,7 +18,7 @@ class MealyMachineData {
   private states: string[] = [];
   private moves: MealyMove[] = [];
 
-  private mealyMooreHelper = new MealyMooreHelper(this.DEFAULT_EMPTY_SYMBOL);
+  private mealyMooreHelper = new MealyMooreHelper();
 
   constructor(args: string[][]) {
     if (Array.isArray(args)) {
@@ -126,29 +125,35 @@ class MealyMachineData {
     while (groupAmount !== previousGroupAmount) {
       previousGroupAmount = groupAmount;
 
-      [groupStatesMap, groupAmount] = this.buildNextEquivalencyGroups(
-        groupStatesMap,
-        this.inputSymbols,
-        this.moves,
-      );
+      [groupStatesMap, groupAmount] =
+        this.mealyMooreHelper.buildNextEquivalencyGroups(
+          groupStatesMap,
+          this.inputSymbols,
+          this.moves.map((move) => {
+            return {
+              destinationState: move.destinationStateAndSignal.state,
+              stateAndInputSymbol: move.stateAndInputSymbol,
+            };
+          }),
+        );
     }
 
-    // В Get newMinimizeValues выписать? или getMinimizeMealyStates tipo takova
-    const oldStateToNewStateMap: Map<string, string> = new Map();
-    const newStates: string[] = [];
+    const [oldStateToNewStateMap, newStates] =
+      this.getMinimizedStates(groupStatesMap);
 
-    for (const [group, oldStates] of groupStatesMap) {
-      const newState = this.getNewStateName(group);
+    const newMoves = this.getMinimizedMoves(
+      groupStatesMap,
+      oldStateToNewStateMap,
+    );
 
-      for (const oldState of oldStates) {
-        oldStateToNewStateMap.set(oldState, newState);
-      }
+    this.states = newStates;
+    this.moves = newMoves;
+  }
 
-      newStates.push(newState);
-    }
-
-    newStates.sort();
-
+  private getMinimizedMoves(
+    groupStatesMap: Map<number, string[]>,
+    oldStateToNewStateMap: Map<string, string>,
+  ): MealyMove[] {
     const newMoves: MealyMove[] = [];
 
     for (const states of groupStatesMap.values()) {
@@ -182,12 +187,28 @@ class MealyMachineData {
       }
     }
 
-    this.states = newStates;
-    this.moves = newMoves;
+    return newMoves;
   }
 
-  private getNewStateName(stateNumber: number) {
-    return this.DEFAULT_NEW_STATE_SYMBOL + stateNumber;
+  private getMinimizedStates(
+    groupStatesMap: Map<number, string[]>,
+  ): [Map<string, string>, string[]] {
+    const oldStateToNewStateMap: Map<string, string> = new Map();
+    const newStates: string[] = [];
+
+    for (const [group, oldStates] of groupStatesMap) {
+      const newState = this.mealyMooreHelper.getNewStateName(group);
+
+      for (const oldState of oldStates) {
+        oldStateToNewStateMap.set(oldState, newState);
+      }
+
+      newStates.push(newState);
+    }
+
+    newStates.sort();
+
+    return [oldStateToNewStateMap, newStates];
   }
 
   private buildOneEquivalencyGroups(): [Map<number, string[]>, number] {
@@ -218,7 +239,7 @@ class MealyMachineData {
     }
 
     const groupHashToStatesMap =
-      this.buildGroupHashToStatesMap(stateToGroupHashMap);
+      this.mealyMooreHelper.buildGroupHashToStatesMap(stateToGroupHashMap);
 
     const groupToStatesMap: Map<number, string[]> = new Map<number, string[]>();
     let groupAmount = 0;
@@ -229,85 +250,6 @@ class MealyMachineData {
     }
 
     return [groupToStatesMap, groupAmount];
-  }
-
-  // Reverse мапы, могу иначе сделать
-  private buildGroupHashToStatesMap(stateToGroupHashMap: Map<string, string>) {
-    const result: Map<string, string[]> = new Map<string, string[]>();
-
-    for (const [state, groupHash] of stateToGroupHashMap) {
-      if (!result.has(groupHash)) {
-        result.set(groupHash, []);
-      }
-
-      result.get(groupHash).push(state);
-    }
-
-    return result;
-  }
-
-  private buildNextEquivalencyGroups(
-    groupToStatesMap: Map<number, string[]>,
-    inputSymbols: string[],
-    moves: MealyMove[],
-  ): [Map<number, string[]>, number] {
-    const stateToNewGroupMap: Map<number, string[]> = new Map();
-
-    const stateToGroupMap: Map<string, number> =
-      this.buildStateToGroupMap(groupToStatesMap);
-
-    let groupAmount = 0;
-
-    for (const groupStates of groupToStatesMap.values()) {
-      const stateToGroupHashMap: Map<string, string> = new Map();
-
-      for (const sourceState of groupStates) {
-        for (const inputSymbol of inputSymbols) {
-          const key: StateAndInputSymbol = {
-            state: sourceState,
-            inputSymbol: inputSymbol,
-          };
-          const destinationState = moves.find(
-            (item) =>
-              JSON.stringify(item.stateAndInputSymbol) === JSON.stringify(key),
-          ).destinationStateAndSignal.state;
-          const destinationGroup = stateToGroupMap.get(destinationState);
-
-          if (!stateToGroupHashMap.has(sourceState)) {
-            stateToGroupHashMap.set(sourceState, destinationGroup.toString());
-          } else {
-            const existingRecord = stateToGroupHashMap.get(sourceState);
-
-            stateToGroupHashMap.set(
-              sourceState,
-              existingRecord + destinationGroup.toString(),
-            );
-          }
-        }
-      }
-
-      const groupHashToStatesMap =
-        this.buildGroupHashToStatesMap(stateToGroupHashMap);
-
-      for (const newStates of groupHashToStatesMap.values()) {
-        stateToNewGroupMap.set(groupAmount, newStates);
-        groupAmount++;
-      }
-    }
-
-    return [stateToNewGroupMap, groupAmount];
-  }
-
-  private buildStateToGroupMap(groupToStatesMap: Map<number, string[]>) {
-    const result: Map<string, number> = new Map();
-
-    for (const [group, states] of groupToStatesMap) {
-      for (const state of states) {
-        result.set(state, group);
-      }
-    }
-
-    return result;
   }
 }
 

@@ -1,3 +1,8 @@
+export type DeterministicMove = {
+  stateAndInputSymbol: StateAndInputSymbol;
+  destinationState: string;
+};
+
 export type MooreMove = {
   stateAndInputSymbol: StateAndInputSymbol;
   destinationState: string;

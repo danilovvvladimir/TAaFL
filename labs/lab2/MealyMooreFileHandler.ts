@@ -20,7 +20,8 @@ class MealyMooreFileHandler {
   };
   private readonly INCORRECT_NUMBER_PARAM_MESSAGE: string =
     "Param must be number";
-  private readonly LOOP_OFFSET: number = 1;
+  private readonly MOORE_LOOP_OFFSET: number = 2;
+  private readonly MEALY_LOOP_OFFSET: number = 1;
 
   private validateLine(unvalidatedLine: string, splitSymbol: string): string[] {
     return unvalidatedLine.trim().split(splitSymbol);
@@ -65,7 +66,12 @@ class MealyMooreFileHandler {
     const rows = this.parseRawNumberParams(rowsString);
     data.mode = this.parseConversionMode(unparsedMode);
 
-    for (let i = 1; i < rows + this.LOOP_OFFSET; i++) {
+    const loopOffset =
+      data.mode === ConversionMode.MEALY
+        ? this.MEALY_LOOP_OFFSET
+        : this.MOORE_LOOP_OFFSET;
+
+    for (let i = 1; i < rows + loopOffset; i++) {
       const row = this.validateLine(lines[i], " ");
 
       if (row.length !== columns) {

@@ -2,17 +2,15 @@ import MealyMooreHelper from "./MealyMooreHelper";
 import { StateAndInputSymbol, MooreMove, MooreState } from "./MealyMooreTypes";
 
 class MooreMachineData {
-  private readonly DEFAULT_EMPTY_SYMBOL: string = "-";
   private readonly DEFAULT_INPUT_SYMBOL: string = "x";
-  private readonly DEFAULT_SEPARATOR_SYMBOL: string = "/";
-  private readonly DEFAULT_NEW_STATE_SYMBOL: string = "q";
+  private readonly STATE_TRANSFORM_REGEX: RegExp = /\D+/g;
 
   private states: MooreState[] = [];
   private inputSymbols: string[] = [];
   private outputAlphabet: string[] = [];
   private moves: MooreMove[] = [];
 
-  private mealyMooreHelper = new MealyMooreHelper(this.DEFAULT_EMPTY_SYMBOL);
+  private mealyMooreHelper = new MealyMooreHelper();
 
   constructor(args: string[][]) {
     if (Array.isArray(args)) {
@@ -53,6 +51,7 @@ class MooreMachineData {
     for (let i = 0; i < transposedRecords.length; i++) {
       for (let j = 0; j < transposedRecords[i].length; j++) {
         const move = transposedRecords[i][j];
+        const transformedMove = move.replace(this.STATE_TRANSFORM_REGEX, "");
 
         const stateAndInputSymbol: StateAndInputSymbol = {
           state: states[i].state,
@@ -61,7 +60,7 @@ class MooreMachineData {
 
         result.push({
           stateAndInputSymbol: stateAndInputSymbol,
-          destinationState: move,
+          destinationState: transformedMove,
         });
       }
     }
@@ -108,33 +107,30 @@ class MooreMachineData {
     while (groupAmount !== previousGroupAmount) {
       previousGroupAmount = groupAmount;
 
-      [groupStatesMap, groupAmount] = this.buildNextEquivalencyGroups(
-        groupStatesMap,
-        this.inputSymbols,
-        this.moves,
-      );
+      [groupStatesMap, groupAmount] =
+        this.mealyMooreHelper.buildNextEquivalencyGroups(
+          groupStatesMap,
+          this.inputSymbols,
+          this.moves,
+        );
     }
 
-    // В Get newMinimizeValues выписать? или getMinimizeMealyStates tipo takova
-    const oldStateToNewStateMap: Map<string, string> = new Map();
-    const newStates: MooreState[] = [];
+    const [oldStateToNewStateMap, newStates] =
+      this.getMinimizedStates(groupStatesMap);
 
-    for (const [group, oldStates] of groupStatesMap) {
-      const baseState = oldStates[0];
-      const newState = this.getNewStateName(group);
+    const newMoves = this.getMinimizedMoves(
+      groupStatesMap,
+      oldStateToNewStateMap,
+    );
 
-      for (const oldState of oldStates) {
-        oldStateToNewStateMap.set(oldState, newState);
-      }
+    this.states = newStates;
+    this.moves = newMoves;
+  }
 
-      newStates.push({
-        state: newState,
-        signal: this.states.find((item) => item.state === baseState).signal,
-      });
-    }
-
-    newStates.sort();
-
+  private getMinimizedMoves(
+    groupStatesMap: Map<number, string[]>,
+    oldStateToNewStateMap: Map<string, string>,
+  ): MooreMove[] {
     const newMoves: MooreMove[] = [];
 
     for (const states of groupStatesMap.values()) {
@@ -165,8 +161,31 @@ class MooreMachineData {
       }
     }
 
-    this.states = newStates;
-    this.moves = newMoves;
+    return newMoves;
+  }
+
+  private getMinimizedStates(
+    groupStatesMap: Map<number, string[]>,
+  ): [Map<string, string>, MooreState[]] {
+    const oldStateToNewStateMap: Map<string, string> = new Map();
+    const newStates: MooreState[] = [];
+
+    for (const [group, oldStates] of groupStatesMap) {
+      const baseState = oldStates[0];
+      const newState = this.mealyMooreHelper.getNewStateName(group);
+
+      for (const oldState of oldStates) {
+        oldStateToNewStateMap.set(oldState, newState);
+      }
+
+      newStates.push({
+        state: newState,
+        signal: this.states.find((item) => item.state === baseState).signal,
+      });
+    }
+
+    newStates.sort();
+    return [oldStateToNewStateMap, newStates];
   }
 
   private buildZeroEquivalencyGroups(): [Map<number, string[]>, number] {
@@ -184,10 +203,6 @@ class MooreMachineData {
     return [groupToStatesMap, groupAmount];
   }
 
-  private getNewStateName(stateNumber: number) {
-    return this.DEFAULT_NEW_STATE_SYMBOL + stateNumber;
-  }
-
   private buildSignalToStatesMap(
     mooreStates: MooreState[],
   ): Map<string, string[]> {
@@ -200,87 +215,6 @@ class MooreMachineData {
 
       const existingItem = result.get(mooreState.signal);
       result.set(mooreState.signal, [...existingItem, mooreState.state]);
-    }
-
-    return result;
-  }
-
-  // Отличается только тем, что [X]
-  private buildNextEquivalencyGroups(
-    groupToStatesMap: Map<number, string[]>,
-    inputSymbols: string[],
-    moves: MooreMove[],
-  ): [Map<number, string[]>, number] {
-    const stateToNewGroupMap: Map<number, string[]> = new Map();
-
-    const stateToGroupMap: Map<string, number> =
-      this.buildStateToGroupMap(groupToStatesMap);
-
-    let groupAmount = 0;
-
-    for (const groupStates of groupToStatesMap.values()) {
-      const stateToGroupHashMap: Map<string, string> = new Map();
-
-      for (const sourceState of groupStates) {
-        for (const inputSymbol of inputSymbols) {
-          const key: StateAndInputSymbol = {
-            state: sourceState,
-            inputSymbol: inputSymbol,
-          };
-          //[X] что овт тут в moves по другому вытаскивается. Можно сделать лучше. ПОсмотреть, что в mealy move мне не надо и там подфиксить. В муре всё норм нет излишней инфы
-          const destinationState = moves.find(
-            (item) =>
-              JSON.stringify(item.stateAndInputSymbol) === JSON.stringify(key),
-          ).destinationState;
-
-          const destinationGroup = stateToGroupMap.get(destinationState);
-
-          if (!stateToGroupHashMap.has(sourceState)) {
-            stateToGroupHashMap.set(sourceState, destinationGroup.toString());
-          } else {
-            const existingRecord = stateToGroupHashMap.get(sourceState);
-
-            stateToGroupHashMap.set(
-              sourceState,
-              existingRecord + destinationGroup.toString(),
-            );
-          }
-        }
-      }
-
-      const groupHashToStatesMap =
-        this.buildGroupHashToStatesMap(stateToGroupHashMap);
-
-      for (const newStates of groupHashToStatesMap.values()) {
-        stateToNewGroupMap.set(groupAmount, newStates);
-        groupAmount++;
-      }
-    }
-
-    return [stateToNewGroupMap, groupAmount];
-  }
-
-  private buildGroupHashToStatesMap(stateToGroupHashMap: Map<string, string>) {
-    const result: Map<string, string[]> = new Map<string, string[]>();
-
-    for (const [state, groupHash] of stateToGroupHashMap) {
-      if (!result.has(groupHash)) {
-        result.set(groupHash, []);
-      }
-
-      result.get(groupHash).push(state);
-    }
-
-    return result;
-  }
-
-  private buildStateToGroupMap(groupToStatesMap: Map<number, string[]>) {
-    const result: Map<string, number> = new Map();
-
-    for (const [group, states] of groupToStatesMap) {
-      for (const state of states) {
-        result.set(state, group);
-      }
     }
 
     return result;
